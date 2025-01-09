@@ -4,14 +4,16 @@
   "description": "",
   "main": "index.ts",
   "scripts": {
-    "dev": "nodemon --ext ts --exec node --inspect -r esbuild-register src/index.ts",
-    "build": "swc src --out-dir dist",
+    "dev": "nodemon --ext ts --exec node --env-file=.env --inspect -r esbuild-register src/index.ts",
+    "build": "etsc src -d dist",
+    "build:ts": "tsc --project tsconfig.json",
     "start": "node dist/src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.8",
     "@types/debug": "4.1.12",
     "@types/express": "5.0.0",
     "@types/http-errors": "2.0.4",
@@ -29,8 +31,12 @@
     "vitest": "2.1.8"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
     "bcrypt": "^5.1.1",
+    "cookie-parser": "^1.4.7",
     "express": "4.19.2",
+    "google-auth-library": "^9.15.0",
+    "googleapis": "^144.0.0",
     "jsonwebtoken": "^9.0.2",
     "nanoid": "^5.0.9"
   }

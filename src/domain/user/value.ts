@@ -1,4 +1,4 @@
-import { type UserEntity } from './entity'
+import { type TokenEntity, type UserEntity } from './entity'
 
 export enum UserRole {
   ADMIN = 'ADMIN',
@@ -18,8 +18,8 @@ export class User implements UserEntity {
   public readonly email: string
   public readonly password: string
   public readonly role: UserRole
-  public readonly endpoint?: string
-  public readonly tokenUsage: number
+  public readonly endpoint?: string | undefined
+  public readonly token: TokenEntity
   public readonly tierAccount: string
 
   constructor(
@@ -28,8 +28,8 @@ export class User implements UserEntity {
     email: string,
     password: string,
     role: UserRole,
+    token: TokenEntity,
     endpoint?: string,
-    tokenUsage: number = 0,
     tierAccount: TierAccount = TierAccount.FREE
   ) {
     this.id = id
@@ -38,7 +38,7 @@ export class User implements UserEntity {
     this.password = password
     this.role = role
     this.endpoint = endpoint
-    this.tokenUsage = tokenUsage
+    this.token = token
     this.tierAccount = tierAccount
   }
 }

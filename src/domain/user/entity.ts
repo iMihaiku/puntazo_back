@@ -6,7 +6,13 @@ export interface UserEntity {
   email: string
   password: string
   role: UserRole
-  endpoint?: string
-  tokenUsage: number
+  endpoint?: string | undefined
+  token: TokenEntity
   tierAccount: string
+}
+
+export interface TokenEntity {
+  id: string
+  token_name: string
+  token_value: string
 }
