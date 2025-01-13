@@ -2,7 +2,7 @@ import { type Request, type Response, type NextFunction } from 'express'
 import { type TokenEntity } from '@/domain/user/entity'
 import { nanoid } from 'nanoid'
 
-export default function getCustomToken(
+export default function generateCustomToken(
   req: Request,
   res: Response,
   next: NextFunction

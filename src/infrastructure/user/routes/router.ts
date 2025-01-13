@@ -7,7 +7,7 @@ import { SQLRepository } from '@/infrastructure/user/repository/sql'
 import verifyOAuth from '@/infrastructure/middleware/user.verfyOAuth'
 import tokenValidation from '@/infrastructure/middleware/user.validate'
 import authValidation from '@/infrastructure/middleware/user.auth'
-import getCustomToken from '@/infrastructure/middleware/user.getCustomToken'
+import generateCustomToken from '@/infrastructure/middleware/user.generateCustomToken'
 
 const userRouter = Router()
 
@@ -15,8 +15,10 @@ const userRepo = new SQLRepository()
 const userCases = new UserCases(userRepo)
 const userController = new UserController(userCases)
 
-userRouter.post('/register', getCustomToken, userController.registerUser)
+userRouter.post('/register', generateCustomToken, userController.registerUser)
 userRouter.post('/login', userController.loginUser)
+userRouter.delete('/', userController.deleteUserByUsername)
+
 userRouter.get('/oauth/test', verifyOAuth, async (req, res) => {
   res.send('OAuth test')
 })

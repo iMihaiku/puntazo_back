@@ -16,6 +16,7 @@ export class UserCases {
     password: string,
     token: TokenEntity
   ): Promise<UserRegisterDTO | null> {
+    console.log('UserCases.createUser', username, email, password, token)
     const newId = nanoid(10)
     const passwordHash = await encrypt(password)
     const user = new User(
@@ -107,5 +108,9 @@ export class UserCases {
       )
       await this.userRepository.createUser(user)
     }
+  }
+
+  public async deleteUserByUsername(username: string): Promise<void> {
+    await this.userRepository.deleteUserByUsername(username)
   }
 }

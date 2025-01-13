@@ -55,6 +55,27 @@ export class SQLRepository implements UserRepository {
     return await this.mapUser(row)
   }
 
+  public async deleteUserByUsername(username: string): Promise<void> {
+    const resultSet = await this.searchUsername(username)
+    if (resultSet.rows.length === 0) {
+      throw new Error('User not found')
+    }
+    const row = resultSet.rows[0]
+    await tursoClient.execute({
+      sql: 'DELETE FROM users WHERE id = :userId',
+      args: {
+        userId: row?.id as string
+      }
+    })
+    await tursoClient.execute({
+      sql: 'DELETE FROM token_table WHERE id = :tokenId',
+      args: {
+        tokenId: row?.token_reference as string
+      }
+    })
+    Server.log(`User ${username} deleted`, LogColor.Yellow)
+  }
+
   private async searchUsername(username: string): Promise<ResultSet> {
     const resultSet = await tursoClient.execute({
       sql: 'SELECT * FROM users WHERE username = :username',

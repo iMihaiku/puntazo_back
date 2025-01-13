@@ -5,4 +5,5 @@ export interface UserRepository {
   getUserByUsername: (username: string) => Promise<UserEntity | null>
   getUserByUserId: (userId: string) => Promise<UserEntity | null>
   oauthGoogle: (code: string) => Promise<void>
+  deleteUserByUsername: (username: string) => Promise<void>
 }

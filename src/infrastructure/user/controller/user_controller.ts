@@ -1,3 +1,4 @@
+import { BodyResponseDTO } from '@/app/response/DTO/body'
 import { type UserCases } from '@/app/user/cases'
 import { type TokenEntity } from '@/domain/user/entity'
 import { type Request, type Response } from 'express'
@@ -22,6 +23,7 @@ export class UserController {
     this.loginUser = this.loginUser.bind(this)
     this.oauthGoogle = this.oauthGoogle.bind(this)
     this.callbackOAuthGoogle = this.callbackOAuthGoogle.bind(this)
+    this.deleteUserByUsername = this.deleteUserByUsername.bind(this)
   }
 
   public async registerUser(req: Request, res: Response): Promise<void> {
@@ -30,13 +32,29 @@ export class UserController {
       email: string
       password: string
     }
-    const { token }: { token: TokenEntity } = req.authInfo
-    try {
-      await this.userCases.createUser(username, email, password, token)
-      res.status(201).send(`User ${username} created`)
-    } catch (error: any) {
-      res.status(400).send(error.message)
+    const responseDTO: BodyResponseDTO = new BodyResponseDTO()
+    if (
+      username === undefined ||
+      email === undefined ||
+      password === undefined
+    ) {
+      responseDTO.code = 401
+      responseDTO.message = 'Register function: Error creating user'
+      responseDTO.data = 'Missing parameters or incorrect parameters'
+    } else {
+      const { token }: { token: TokenEntity } = req.authInfo
+      try {
+        await this.userCases.createUser(username, email, password, token)
+        responseDTO.code = 200
+        responseDTO.message = 'Register function: User created'
+        responseDTO.data = { username }
+      } catch (error: any) {
+        responseDTO.code = 400
+        responseDTO.message = 'Register function: Error creating user'
+        responseDTO.data = error.message
+      }
     }
+    res.status(responseDTO.code).send(responseDTO)
   }
 
   public async getUserByUsername(req: Request, res: Response): Promise<void> {
@@ -107,7 +125,10 @@ export class UserController {
        * Saving the refresh token and user data in the database
        */
       if (!registeredUserData) {
-        await this.userCases.callbackOAuthGoogle(userData, tokens.refresh_token!)
+        await this.userCases.callbackOAuthGoogle(
+          userData,
+          tokens.refresh_token!
+        )
       }
       /**
        * Obtaining user information
@@ -119,11 +140,37 @@ export class UserController {
       })
       res.json({
         success: true,
+        bearer: tokens.id_token,
         user: userData
       })
     } catch (err) {
       console.error(err)
       res.status(500).send('Error al autenticar')
     }
+  }
+
+  public async deleteUserByUsername(
+    req: Request,
+    res: Response
+  ): Promise<void> {
+    const { userName } = req.query
+    const responseDTO: BodyResponseDTO = new BodyResponseDTO()
+    if (userName === undefined) {
+      responseDTO.code = 401
+      responseDTO.message = 'Delete function: Error deleting user'
+      responseDTO.data = 'Username must be provided'
+    } else {
+      try {
+        await this.userCases.deleteUserByUsername(userName as string)
+        responseDTO.code = 200
+        responseDTO.message = 'Delete function: User deleted'
+        responseDTO.data = { userName }
+      } catch (error: any) {
+        responseDTO.code = 400
+        responseDTO.message = 'Delete function: Error deleting user'
+        responseDTO.data = error.message
+      }
+    }
+    res.status(responseDTO.code).send(responseDTO)
   }
 }
