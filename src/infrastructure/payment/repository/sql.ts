@@ -4,8 +4,7 @@ import { tursoClient } from '@/lib/db/turso'
 
 export class SQLRepository implements PaymentRepository {
   public async createIntentPayment(
-    payment: Payment,
-    currency: string
+    payment: Payment
   ): Promise<void> {
     await tursoClient.execute({
       sql: `INSERT INTO 
@@ -15,8 +14,8 @@ export class SQLRepository implements PaymentRepository {
         intent_id: payment.intent_id,
         product_id: payment.product_id,
         user_id: payment.user_id,
-        currency,
-        status: 'Pending',
+        currency: payment.currency,
+        status: payment.status,
         amount: payment.amount,
         created_at: payment.created_at
       }
@@ -38,6 +37,25 @@ export class SQLRepository implements PaymentRepository {
       SET status = 'Cancelled'
       WHERE intent_id = :intentId`,
       args: {
+        intentId
+      }
+    })
+  }
+
+  public async updateIntentPayment(payment: Payment): Promise<void> {
+    const { intent_id: intentId, product_id: productId, currency, amount, status } = payment
+    await tursoClient.execute({
+      sql: `UPDATE payment_intents
+      SET status = :status,
+      product_id = :productId,
+      currency = :currency,
+      amount = :amount
+      WHERE intent_id = :intentId`,
+      args: {
+        status,
+        productId,
+        currency,
+        amount,
         intentId
       }
     })

@@ -1,4 +1,4 @@
-import { type UserEntity } from './entity'
+import { type TokenEntity, type UserEntity } from './entity'
 
 export interface UserRepository {
   createUser: (user: UserEntity) => Promise<void>
@@ -6,4 +6,7 @@ export interface UserRepository {
   getUserByUserId: (userId: string) => Promise<UserEntity | null>
   oauthGoogle: (code: string) => Promise<void>
   deleteUserByUsername: (username: string) => Promise<void>
+  getTokenByUserId: (userid: string) => Promise<TokenEntity>
+  saveToken: (token: TokenEntity) => Promise<void>
+  updateToken: (tokenValue: string, userId: string) => Promise<void>
 }

@@ -7,7 +7,7 @@ import Stripe from 'stripe'
 export class PaymentCases {
   constructor(private readonly paymentRepository: PaymentRepository) {}
 
-  public async intentPayment(
+  public async startIntentPayment(
     productId: string,
     userId: string
   ): Promise<string> {
@@ -37,13 +37,11 @@ export class PaymentCases {
       productId,
       userId,
       price.currency,
+      'requires_payment_method',
       price.unit_amount!
     )
     try {
-      await this.paymentRepository.createIntentPayment(
-        payment,
-        paymentIntent.id
-      )
+      await this.paymentRepository.createIntentPayment(payment)
       if (!paymentIntent.client_secret) {
         return 'error'
       } else {
@@ -115,7 +113,10 @@ export class PaymentCases {
     }
     try {
       await this.paymentRepository.cancelIncompleteIntentById(intentId)
-      Server.log(`The Payment intent [${intentId}] has been canceled`, LogColor.Green)
+      Server.log(
+        `The Payment intent [${intentId}] has been canceled`,
+        LogColor.Green
+      )
       return 'OK'
     } catch (error) {
       Server.log(
@@ -124,5 +125,38 @@ export class PaymentCases {
       )
       return 'KO'
     }
+  }
+
+  public async updateIntentPayment(
+    intentId: string,
+    userId: string,
+    status: string,
+    productId: string,
+    currency: string,
+    amount: number
+  ): Promise<string> {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+    const intent = await stripe.paymentIntents.retrieve(intentId)
+
+    const payment = new Payment(
+      intentId,
+      productId || intent.metadata.productId!,
+      userId,
+      currency || intent.currency,
+      status || intent.status,
+      amount || intent.amount
+    )
+    console.log(payment)
+
+    await stripe.paymentIntents.update(payment.intent_id, {
+      amount: payment.amount,
+      currency: payment.currency,
+      metadata: {
+        productId: payment.product_id
+      }
+    })
+    await this.paymentRepository.updateIntentPayment(payment)
+
+    return ''
   }
 }

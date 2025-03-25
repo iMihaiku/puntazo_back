@@ -3,6 +3,7 @@ import { type TokenEntity, type UserEntity } from '@/domain/user/entity'
 import { type UserRepository } from '@/domain/user/repository'
 import { User, UserRole, TierAccount } from '@/domain/user/value'
 import { encrypt, compare } from '@/lib/bcrypt/handler'
+import { encrypted } from '@/lib/crypt/handler'
 import { UserLoginDTO } from './DTO/login'
 import { type UserRegisterDTO } from './DTO/register'
 import jwt from 'jsonwebtoken'
@@ -14,13 +15,27 @@ export class UserCases {
     username: string,
     email: string,
     password: string,
-    token: TokenEntity
+    token: TokenEntity,
+    id?: string
   ): Promise<UserRegisterDTO | null> {
-    console.log('UserCases.createUser', username, email, password, token)
     const newId = nanoid(10)
-    const passwordHash = await encrypt(password)
+    let passwordHash
+
+    if (id) {
+      passwordHash = password
+      token.id = id
+    } else {
+      passwordHash = await encrypt(password)
+      token.id = newId
+    }
+
+    token.token_value =
+      token.token_value !== 'not_needed'
+        ? encrypted(token.token_value)
+        : 'not_needed'
+
     const user = new User(
-      newId,
+      id ?? newId,
       username,
       email,
       passwordHash,
@@ -29,8 +44,16 @@ export class UserCases {
       '',
       TierAccount.FREE
     )
-    await this.userRepository.createUser(user)
-    return null
+    console.log(user)
+    try {
+      await this.userRepository.createUser(user)
+    } catch (error) {
+      if (error.message === 'Email already exists') {
+        return null
+      }
+      throw error
+    }
+    return user
   }
 
   public async getUserByUsername(username: string): Promise<UserEntity | null> {
@@ -92,10 +115,11 @@ export class UserCases {
        */
     } else {
       const token: TokenEntity = {
-        id: nanoid(10),
-        token_name: 'refresh_token',
+        id: userData.id,
+        token_name: 'refresh_token_google',
         token_value: refreshToken
       }
+      token.token_value = encrypted(token.token_value)
       const user = new User(
         userData.id as string,
         userData.name as string,
@@ -106,11 +130,25 @@ export class UserCases {
         '',
         TierAccount.FREE
       )
+
       await this.userRepository.createUser(user)
     }
   }
 
   public async deleteUserByUsername(username: string): Promise<void> {
     await this.userRepository.deleteUserByUsername(username)
+  }
+
+  public async getTokenByUserId(userId: string): Promise<TokenEntity> {
+    return await this.userRepository.getTokenByUserId(userId)
+  }
+
+  public async saveToken(token: TokenEntity): Promise<void> {
+    await this.userRepository.saveToken(token)
+  }
+
+  public async updateToken(tokenValue: string, userId: string): Promise<void> {
+    tokenValue = await encrypt(tokenValue)
+    await this.userRepository.updateToken(tokenValue, userId)
   }
 }

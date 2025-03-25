@@ -7,38 +7,48 @@ import { type ResultSet } from '@libsql/client/.'
 
 export class SQLRepository implements UserRepository {
   public async createUser(user: UserEntity): Promise<void> {
-    if (await this.checkUsernameExists(user.username)) {
-      throw new Error('Username already exists')
+    if (await this.checkUsernameExists(user.email)) {
+      throw new Error('Email already exists')
     }
-    await tursoClient.execute({
-      sql: `INSERT INTO 
-      token_table (id, token_name, token_value) 
-      VALUES (:id, :name, :value)`,
-      args: {
-        id: user.token.id,
-        name: user.token.token_name,
-        value: user.token.token_value
-      }
-    })
-    await tursoClient.execute({
-      sql: `INSERT INTO 
-      users (id, username, email, password, role, endpoint, token_reference, tierAccount) 
-      VALUES (:id, :username, :email, :password, :role, :endpoint, :tokenReference, :tierAccount)`,
-      args: {
-        id: user.id,
-        username: user.username,
-        password: user.password,
-        email: user.email,
-        role: user.role,
-        endpoint: null,
-        tokenReference: user.token.id,
-        tierAccount: TierAccount.FREE
-      }
-    })
-    Server.log(
-      `User ${user.username} created with id: ${user.id}`,
-      LogColor.Green
-    )
+    const transaction = await tursoClient.transaction()
+    try {
+      await transaction.execute({
+        sql: `INSERT INTO 
+        token_table (id, token_name, token_value) 
+        VALUES (:id, :name, :value)`,
+        args: {
+          id: user.token.id,
+          name: user.token.token_name,
+          value: user.token.token_value
+        }
+      })
+      await transaction.execute({
+        sql: `INSERT INTO 
+        users (id, username, email, password, role, endpoint, token_reference, tierAccount) 
+        VALUES (:id, :username, :email, :password, :role, :endpoint, :tokenReference, :tierAccount)`,
+        args: {
+          id: user.id,
+          username: user.username,
+          password: user.password,
+          email: user.email,
+          role: user.role,
+          endpoint: null,
+          tokenReference: user.token.id,
+          tierAccount: TierAccount.FREE
+        }
+      })
+      await transaction.commit()
+      Server.log(
+        `User ${user.username} created with id: ${user.id}`,
+        LogColor.Green
+      )
+    } catch (error) {
+      await transaction.rollback()
+      Server.log(
+        `Error creating user ${user.username} with id: ${user.id}`,
+        LogColor.Red
+      )
+    }
   }
 
   public async getUserByUsername(username: string): Promise<UserEntity | null> {
@@ -86,6 +96,16 @@ export class SQLRepository implements UserRepository {
     return resultSet
   }
 
+  private async searchEmail(email: string): Promise<ResultSet> {
+    const resultSet = await tursoClient.execute({
+      sql: 'SELECT * FROM users WHERE email = :email',
+      args: {
+        email
+      }
+    })
+    return resultSet
+  }
+
   private async searchUserId(userId: string): Promise<ResultSet> {
     const resultSet = await tursoClient.execute({
       sql: 'SELECT * FROM users WHERE id = :userId',
@@ -97,7 +117,7 @@ export class SQLRepository implements UserRepository {
   }
 
   private async checkUsernameExists(username: string): Promise<boolean> {
-    const resultSet = await this.searchUsername(username)
+    const resultSet = await this.searchEmail(username)
     return resultSet.rows.length > 0
   }
 
@@ -139,5 +159,52 @@ export class SQLRepository implements UserRepository {
 
   public async oauthGoogle(code: string): Promise<void> {
     // Implementar
+  }
+
+  public async getTokenByUserId(userId: string): Promise<TokenEntity> {
+    const resultSet = await tursoClient.execute({
+      sql: 'SELECT id, token_name, token_value FROM token_table WHERE id = :userId',
+      args: {
+        userId
+      }
+    })
+    if (resultSet.rows.length === 0) {
+      throw new Error('Token not found')
+    }
+    const row = resultSet.rows[0]
+    if (row !== undefined) {
+      return {
+        id: row.id as string,
+        token_name: row.token_name as string,
+        token_value: row.token_value as string
+      }
+    } else {
+      throw new Error('Token not found')
+    }
+  }
+
+  public async saveToken(token: TokenEntity): Promise<void> {
+    await tursoClient.execute({
+      sql: `INSERT INTO 
+      token_table (id, token_name, token_value) 
+      VALUES (:id, :name, :value)`,
+      args: {
+        id: token.id,
+        name: token.token_name,
+        value: token.token_value
+      }
+    })
+  }
+
+  public async updateToken(tokenValue: string, userId: string): Promise<void> {
+    await tursoClient.execute({
+      sql: `UPDATE token_table
+            SET token_value = :tokenValue
+            WHERE id = :userId`,
+      args: {
+        tokenValue,
+        userId
+      }
+    })
   }
 }

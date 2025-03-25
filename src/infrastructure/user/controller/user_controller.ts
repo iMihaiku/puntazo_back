@@ -1,20 +1,13 @@
 import { BodyResponseDTO } from '@/app/response/DTO/body'
 import { type UserCases } from '@/app/user/cases'
-import { type TokenEntity } from '@/domain/user/entity'
+// import { generateJWT } from '@/lib/jwt'
 import { type Request, type Response } from 'express'
-import { OAuth2Client } from 'google-auth-library'
-import { google } from 'googleapis'
-
-const DOMAIN_URI = 'http://localhost:8080'
-const { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI } = process.env
-
-const oauth2Client = new OAuth2Client(
-  CLIENT_ID,
-  CLIENT_SECRET,
-  DOMAIN_URI + REDIRECT_URI
-)
-const oauth2 = google.oauth2('v2')
-
+import { callbackOAuthGoogle, oauthGoogle } from './google_oauth_controller'
+import {
+  callbackOAuthFacebook,
+  oauthFacebook
+} from './facebook_oauth_controller'
+import { customLoginUser, customRegisterUser } from './custom_auth_controller'
 export class UserController {
   constructor(private readonly userCases: UserCases) {
     this.registerUser = this.registerUser.bind(this)
@@ -23,38 +16,12 @@ export class UserController {
     this.loginUser = this.loginUser.bind(this)
     this.oauthGoogle = this.oauthGoogle.bind(this)
     this.callbackOAuthGoogle = this.callbackOAuthGoogle.bind(this)
+    this.callbackOAuthFacebook = this.callbackOAuthFacebook.bind(this)
     this.deleteUserByUsername = this.deleteUserByUsername.bind(this)
   }
 
   public async registerUser(req: Request, res: Response): Promise<void> {
-    const { username, email, password } = req.body as {
-      username: string
-      email: string
-      password: string
-    }
-    const responseDTO: BodyResponseDTO = new BodyResponseDTO()
-    if (
-      username === undefined ||
-      email === undefined ||
-      password === undefined
-    ) {
-      responseDTO.code = 401
-      responseDTO.message = 'Register function: Error creating user'
-      responseDTO.data = 'Missing parameters or incorrect parameters'
-    } else {
-      const { token }: { token: TokenEntity } = req.authInfo
-      try {
-        await this.userCases.createUser(username, email, password, token)
-        responseDTO.code = 200
-        responseDTO.message = 'Register function: User created'
-        responseDTO.data = { username }
-      } catch (error: any) {
-        responseDTO.code = 400
-        responseDTO.message = 'Register function: Error creating user'
-        responseDTO.data = error.message
-      }
-    }
-    res.status(responseDTO.code).send(responseDTO)
+    await customRegisterUser(req, res, this.userCases)
   }
 
   public async getUserByUsername(req: Request, res: Response): Promise<void> {
@@ -84,69 +51,26 @@ export class UserController {
   }
 
   public async loginUser(req: Request, res: Response): Promise<void> {
-    const { username, password } = req.body as {
-      username: string
-      password: string
-    }
-    const user = await this.userCases.loginUser(username, password)
-    if (user === null) {
-      res.status(401).send('Las credenciales proporcionadas no son validas')
-      return
-    }
-    res.status(200).send(user)
+    await customLoginUser(req, res, this.userCases)
   }
 
   public async oauthGoogle(req: Request, res: Response): Promise<void> {
-    const authUrl = oauth2Client.generateAuthUrl({
-      access_type: 'offline',
-      scope: [
-        'https://www.googleapis.com/auth/userinfo.profile',
-        'https://www.googleapis.com/auth/userinfo.email'
-      ]
-    })
-    res.redirect(authUrl)
+    await oauthGoogle(req, res)
   }
 
   public async callbackOAuthGoogle(req: Request, res: Response): Promise<void> {
-    const code = req.query.code?.toString() ?? ''
+    await callbackOAuthGoogle(req, res, this.userCases)
+  }
 
-    try {
-      const { tokens } = await oauth2Client.getToken(code)
-      oauth2Client.setCredentials(tokens)
-      const userInfo = await oauth2.userinfo.get({ auth: oauth2Client })
-      const userData = userInfo.data
-      /**
-       * Check if the user is already registered
-       */
-      const registeredUserData = await this.userCases.getUserByUserId(
-        userData.id!
-      )
-      /**
-       * Saving the refresh token and user data in the database
-       */
-      if (!registeredUserData) {
-        await this.userCases.callbackOAuthGoogle(
-          userData,
-          tokens.refresh_token!
-        )
-      }
-      /**
-       * Obtaining user information
-       */
-      res.cookie('access_token', tokens.access_token, {
-        httpOnly: true,
-        secure: true,
-        maxAge: 3600 * 1000
-      })
-      res.json({
-        success: true,
-        bearer: tokens.id_token,
-        user: userData
-      })
-    } catch (err) {
-      console.error(err)
-      res.status(500).send('Error al autenticar')
-    }
+  public async oauthFacebook(req: Request, res: Response): Promise<void> {
+    await oauthFacebook(req, res)
+  }
+
+  public async callbackOAuthFacebook(
+    req: Request,
+    res: Response
+  ): Promise<void> {
+    await callbackOAuthFacebook(req, res, this.userCases)
   }
 
   public async deleteUserByUsername(
