@@ -51,11 +51,12 @@ export class SQLRepository implements UserRepository {
     }
   }
 
-  public async getUserByUsername(username: string): Promise<UserEntity | null> {
-    const resultSet = await this.searchUsername(username)
+  public async getUserByUsername(email: string): Promise<UserEntity | null> {
+    const resultSet = await this.searchEmail(email)
     if (resultSet.rows.length === 0) return null
     const row = resultSet.rows[0]
-    return await this.mapUser(row)
+    const user = await this.mapUser(row)
+    return user
   }
 
   public async getUserByUserId(userId: string): Promise<UserEntity | null> {
@@ -206,5 +207,43 @@ export class SQLRepository implements UserRepository {
         userId
       }
     })
+  }
+
+  public async updateSession(userId: string, sessionId: string): Promise<void> {
+    const actualSessionRS = await tursoClient.execute({
+      sql: `SELECT id FROM user_session
+            WHERE user_id = :userId AND id = :sessionId`,
+      args: {
+        userId,
+        sessionId
+      }
+    })
+    if (actualSessionRS.rows.length === 0) {
+      await tursoClient.execute({
+        sql: `INSERT INTO 
+        user_session (id, user_id, last_session) 
+        VALUES (:id, :userId, :timestamp)`,
+        args: {
+          id: sessionId,
+          userId,
+          timestamp: new Date().toLocaleTimeString()
+        }
+      })
+    }
+  }
+
+  public async verifySession(
+    userId: string,
+    sessionId: string
+  ): Promise<boolean> {
+    const sessionRS = await tursoClient.execute({
+      sql: `SELECT id FROM user_session
+      WHERE user_id = :userId AND id = :id`,
+      args: {
+        id: sessionId,
+        userId
+      }
+    })
+    return sessionRS.rows.length > 0
   }
 }

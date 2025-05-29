@@ -3,6 +3,7 @@ import { google } from 'googleapis'
 import { type Credentials, OAuth2Client } from 'google-auth-library'
 import { generateJWT } from '@/lib/jwt'
 import { type UserCases } from '@/app/user/cases'
+import { nanoid } from 'nanoid'
 
 let DOMAIN_URI: string
 let DOMAIN_SERVER_URI: string
@@ -75,13 +76,14 @@ export async function callbackOAuthGoogle(
       await userCases.updateToken(tokens.refresh_token, userData.id)
     }
   }
-  const jwtToken = generateJWT(userData.id, userData.name, userData.email)
+  const sessionId = nanoid(15)
+  await userCases.updateSession(userData.id, sessionId)
+  const jwtToken = generateJWT(userData.id, userData.name, userData.email, sessionId)
   res.cookie('session_token', jwtToken, {
     httpOnly: true,
     secure: true,
-    maxAge: 3600 * 1000
+    maxAge: 3600 * 1000 * 24
   })
-
   res.redirect(`${DOMAIN_URI}${AUTH_RESPONSE_URL}?state=succeded`)
 }
 

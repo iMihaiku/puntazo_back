@@ -1,11 +1,11 @@
-import { nanoid } from 'nanoid'
 import { type TokenEntity, type UserEntity } from '@/domain/user/entity'
 import { type UserRepository } from '@/domain/user/repository'
+import { type UserRegisterDTO } from './DTO/register'
+import { nanoid } from 'nanoid'
 import { User, UserRole, TierAccount } from '@/domain/user/value'
 import { encrypt, compare } from '@/lib/bcrypt/handler'
 import { encrypted } from '@/lib/crypt/handler'
 import { UserLoginDTO } from './DTO/login'
-import { type UserRegisterDTO } from './DTO/register'
 import jwt from 'jsonwebtoken'
 
 export class UserCases {
@@ -47,8 +47,8 @@ export class UserCases {
     console.log(user)
     try {
       await this.userRepository.createUser(user)
-    } catch (error) {
-      if (error.message === 'Email already exists') {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === 'Email already exists') {
         return null
       }
       throw error
@@ -65,10 +65,10 @@ export class UserCases {
   }
 
   public async loginUser(
-    username: string,
+    email: string,
     password: string
   ): Promise<UserLoginDTO | null> {
-    const user = await this.userRepository.getUserByUsername(username)
+    const user = await this.userRepository.getUserByUsername(email)
     if (user === null) {
       return null
     }
@@ -93,6 +93,7 @@ export class UserCases {
     }
     const userDTO = new UserLoginDTO(
       user.id,
+      user.username,
       token,
       user.role.toString(),
       tokenResponse,
@@ -150,5 +151,13 @@ export class UserCases {
   public async updateToken(tokenValue: string, userId: string): Promise<void> {
     tokenValue = await encrypt(tokenValue)
     await this.userRepository.updateToken(tokenValue, userId)
+  }
+
+  public async updateSession(userId: string, sessionId: string): Promise<void> {
+    await this.userRepository.updateSession(userId, sessionId)
+  }
+
+  public async verifySession(userId: string, sessionId: string): Promise<boolean> {
+    return await this.userRepository.verifySession(userId, sessionId)
   }
 }

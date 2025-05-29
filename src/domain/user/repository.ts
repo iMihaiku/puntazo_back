@@ -9,4 +9,6 @@ export interface UserRepository {
   getTokenByUserId: (userid: string) => Promise<TokenEntity>
   saveToken: (token: TokenEntity) => Promise<void>
   updateToken: (tokenValue: string, userId: string) => Promise<void>
+  updateSession: (userId: string, sessionId: string) => Promise<void>
+  verifySession: (userId: string, sessionId: string) => Promise<boolean>
 }

@@ -3,6 +3,7 @@ import { type TokenEntity } from '@/domain/user/entity'
 export class UserLoginDTO {
   constructor(
     public readonly id: string,
+    public readonly username: string,
     public readonly tokenJWT: string,
     public readonly role: string,
     public readonly token: TokenEntity,

@@ -3,6 +3,7 @@ import { Request } from 'express'
 
 declare module 'express-serve-static-core' {
   interface Request {
-    authInfo?: any // Ajusta este tipo según lo que necesites
+    authInfo?: any
+    session_data?: any
   }
 }

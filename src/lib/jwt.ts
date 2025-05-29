@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken'
 
-function generateJWT(id: string, name: string, email: string): string {
+function generateJWT(id: string, name: string, email: string, sessionId: string): string {
   const { JWT_SECRET } = process.env
   if (!JWT_SECRET) {
     throw new Error('JWT_SECRET no está definido')
@@ -9,10 +9,11 @@ function generateJWT(id: string, name: string, email: string): string {
     {
       id,
       name,
-      email
+      email,
+      sessionId
     },
     JWT_SECRET,
-    { expiresIn: '12s' }
+    { expiresIn: '24h' }
   )
   return jwtToken
 }

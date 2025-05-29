@@ -2,6 +2,7 @@ import { type Request, type Response } from 'express'
 import { type UserCases } from '@/app/user/cases'
 import { type TokenEntity } from '@/domain/user/entity'
 import { generateJWT } from '@/lib/jwt'
+import { nanoid } from 'nanoid'
 
 interface UserFacebookDTO {
   id: string
@@ -104,11 +105,18 @@ export async function callbackOAuthFacebook(
       userData.id
     )
   }
-  const jwtToken = generateJWT(userData.id, userData.name, userData.email)
+  const sessionId = nanoid(15)
+  await userCases.updateSession(userData.id, sessionId)
+  const jwtToken = generateJWT(
+    userData.id,
+    userData.name,
+    userData.email,
+    sessionId
+  )
   res.cookie('session_token', jwtToken, {
     httpOnly: true,
     secure: true,
-    maxAge: 3600 * 1000
+    maxAge: 3600 * 1000 * 4
   })
   let domainResponse = req.headers.host
   if (domainResponse?.includes('localhost')) {

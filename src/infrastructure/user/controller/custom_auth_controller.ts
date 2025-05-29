@@ -2,6 +2,7 @@ import { type UserCases } from '@/app/user/cases'
 import { type TokenEntity } from '@/domain/user/entity'
 import { generateJWT } from '@/lib/jwt'
 import { type Request, type Response } from 'express'
+import { nanoid } from 'nanoid'
 
 const { AUTH_RESPONSE_URL } = process.env
 
@@ -54,11 +55,13 @@ export async function customRegisterUser(
         )
         return
       }
-      const jwtToken = generateJWT(userCreate.id, username, email)
+      const sessionId = nanoid(15)
+      await userCases.updateSession(userCreate.id, sessionId)
+      const jwtToken = generateJWT(userCreate.id, username, email, sessionId)
       res.cookie('session_token', jwtToken, {
         httpOnly: true,
         secure: true,
-        maxAge: 3600 * 1000
+        maxAge: 3600 * 1000 * 4
       })
       console.log('User created custom auth', res)
       res.json({ url: `${DOMAIN_URI}${AUTH_RESPONSE_URL}?state=succeded` })
@@ -78,10 +81,47 @@ export async function customLoginUser(
     email: string
     password: string
   }
+  if (email === undefined || password === undefined) {
+    res.status(400).send('Missing parameters or incorrect parameters')
+    return
+  }
   const user = await userCases.loginUser(email, password)
   if (user === null) {
     res.status(401).send('Las credenciales proporcionadas no son validas')
     return
   }
-  res.redirect(`${DOMAIN_URI}${AUTH_RESPONSE_URL}?state=succeded`)
+  const sessionId = nanoid(15)
+  const jwtToken = generateJWT(user.id, user.username, email, sessionId)
+  res.cookie('session_token', jwtToken, {
+    httpOnly: true,
+    secure: true,
+    maxAge: 3600 * 1000
+  })
+  res.json({ url: `${DOMAIN_URI}${AUTH_RESPONSE_URL}?state=succeded` })
+}
+
+export async function verifySession(
+  req: Request,
+  res: Response,
+  userCases: UserCases
+): Promise<void> {
+  let {
+    userId,
+    sessionId,
+    email,
+    name
+  }: {
+    userId: string
+    sessionId: string
+    email: string
+    name: string
+  } = req.authInfo
+  const role = undefined // temporal hasta implementacion
+  const isValid = await userCases.verifySession(userId, sessionId)
+  if (!isValid) {
+    email = ''
+    name = ''
+    userId = ''
+  }
+  res.json({ isValid, email, name, userId, role })
 }

@@ -12,7 +12,7 @@ app.use(
   cors({
     origin: 'http://localhost:3000', // Permite cualquier origen
     methods: 'GET,POST,PUT,DELETE', // Permite estos métodos
-    allowedHeaders: 'Content-Type,Authorization',
+    allowedHeaders: 'Content-Type,Authorization,Cookie',
     credentials: true
   })
 )

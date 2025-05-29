@@ -7,7 +7,7 @@ import {
   callbackOAuthFacebook,
   oauthFacebook
 } from './facebook_oauth_controller'
-import { customLoginUser, customRegisterUser } from './custom_auth_controller'
+import { customLoginUser, customRegisterUser, verifySession } from './custom_auth_controller'
 export class UserController {
   constructor(private readonly userCases: UserCases) {
     this.registerUser = this.registerUser.bind(this)
@@ -18,6 +18,7 @@ export class UserController {
     this.callbackOAuthGoogle = this.callbackOAuthGoogle.bind(this)
     this.callbackOAuthFacebook = this.callbackOAuthFacebook.bind(this)
     this.deleteUserByUsername = this.deleteUserByUsername.bind(this)
+    this.verifySession = this.verifySession.bind(this)
   }
 
   public async registerUser(req: Request, res: Response): Promise<void> {
@@ -96,5 +97,9 @@ export class UserController {
       }
     }
     res.status(responseDTO.code).send(responseDTO)
+  }
+
+  public async verifySession(req: Request, res: Response): Promise<void> {
+    await verifySession(req, res, this.userCases)
   }
 }
